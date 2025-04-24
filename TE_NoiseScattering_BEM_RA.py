@@ -135,32 +135,32 @@ def quadrupole(k0, xt, yt, xc, yc, s):
     return pxx, pyx , pyy
  
 
-def quadrupole_old(k0, xt, yt, xc, yc, s):
-    """ This function computs the model source quadrupole from a list of sources, 
-    whith coordinates at (xc, yc) and (complex) intensity s, to a list of targets at (xt, yt)"""
-    xt = np.asarray(xt).reshape(1,-1)
-    yt = np.asarray(yt).reshape(1,-1)
-    xc = np.asarray(xc).reshape(-1,1)
-    yc = np.asarray(yc).reshape(-1,1)
-    s = np.asarray(s)
-    assert xt.shape[0] == 1
-    assert yc.shape[1] == 1
+# def quadrupole_old(k0, xt, yt, xc, yc, s):
+#     """ This function computs the model source quadrupole from a list of sources, 
+#     whith coordinates at (xc, yc) and (complex) intensity s, to a list of targets at (xt, yt)"""
+#     xt = np.asarray(xt).reshape(1,-1)
+#     yt = np.asarray(yt).reshape(1,-1)
+#     xc = np.asarray(xc).reshape(-1,1)
+#     yc = np.asarray(yc).reshape(-1,1)
+#     s = np.asarray(s)
+#     assert xt.shape[0] == 1
+#     assert yc.shape[1] == 1
 
-    dx = xt - xc
-    dy = yt - yc
+#     dx = xt - xc
+#     dy = yt - yc
     
-    arg = k0 * np.sqrt(dx**2 + dy**2)
+#     arg = k0 * np.sqrt(dx**2 + dy**2)
     
-    Ha0 = hankel1(0,arg)  # Hankel of 1 order 0
-    Ha1 = hankel1(1,arg)
-    Ha2 = hankel1(2,arg)
+#     Ha0 = hankel1(0,arg)  # Hankel of 1 order 0
+#     Ha1 = hankel1(1,arg)
+#     Ha2 = hankel1(2,arg)
     
-    arg1_y2 = - 0.5 * (Ha0 - Ha2) * ( k0**2 * dx * dy / ( dx**2 + dy**2))
-    arg2_y2 =  Ha1 * k0 * dx * dy / (( dx**2 + dy**2)**(3.0/2.0))
+#     arg1_y2 = - 0.5 * (Ha0 - Ha2) * ( k0**2 * dx * dy / ( dx**2 + dy**2))
+#     arg2_y2 =  Ha1 * k0 * dx * dy / (( dx**2 + dy**2)**(3.0/2.0))
     
-    p =  s*(1j / 4.0 ) * (arg1_y2 + arg2_y2)
-    p = np.sum(p, axis=0)
-    return p
+#     p =  s*(1j / 4.0 ) * (arg1_y2 + arg2_y2)
+#     p = np.sum(p, axis=0)
+#     return p
 
 class gpanel:
     """This class contains all geometry information about to a panel"""
@@ -233,15 +233,12 @@ class Profil:
         self.n2 = np.asarray([pi.n2 for pi in panels])
         self.ds = np.asarray([pi.length for pi in panels])
 
-        print("calling hgmatrix...", Nps)
         self.H , self.G  = matrixv1.mntmat.hgmatrix(k0, self.x1,self.y1,
                                                         self.x2,self.y2,
                                                         self.xc,self.yc,
                                                         self.n1,self.n2,
                                                         self.ds,Nps)
-        print('H[1,1] = ', self.H[1,1], 'type = ', type(self.H[1,1]))
-        print('G[1,1] = ', self.G[1,1], 'type = ', type(self.G[1,1]))
-        print("Done hgmatrix...")
+
         """
         ==================================================================================
         ----------------- Import Structural Modal Basis information ----------------------
@@ -256,16 +253,12 @@ class Profil:
         nplate = Nps
 
         # Building the matrix D
-        print("calling poroelastic...")
-
         self.D = matrixv1.mntmat.poroelastic(nplate,k0, alphaH, epsilon, omega, self.n2, self.ds, beta, phi,Nps,nm)
-        print('D[1,1] = ', self.D[1,1], 'type = ', type(self.D[1,1]))
-        print("Done poroelastic.")
+
 
         # Compute LHS
         self.A = self.H - np.dot(self.G, self.D)
         # Far field matrix H, G for the target points
-        print("calling hgobs...")
         self.Ht, self.Gt = matrixv1.mntmat.hgobs    (self.k0,   self.xt ,self.yt     ,
                                                                 self.x1 ,self.y1     ,
                                                                 self.x2 ,self.y2     ,
@@ -284,7 +277,7 @@ class Profil:
                                                                 self.n1     , self.n2       ,
                                                                 self.ds     , len(self.xs)  ,
                                                                 Nps)
-        print("Done hgobs.")
+
 
     def target_from_sources(self,s,sourceType='quadrupole',dx=0,dy=0):
         """ This function computes the model source quadrupole from a list of sources,
@@ -293,9 +286,12 @@ class Profil:
         if sourceType == 'monopole':
             S  = monopole(self.k0, self.xc, self.yc, self.xs+dx, self.ys-dy, s)
             Sf = monopole(self.k0, self.xt, self.yt, self.xs+dx, self.ys-dy, s)
+        elif sourceType == 'dipole':
+            S  = dipole(self.k0, self.xc, self.yc, self.xs+dx, self.ys-dy, s)[1]
+            Sf = dipole(self.k0, self.xt, self.yt, self.xs+dx, self.ys-dy, s)[1]
         elif sourceType == 'quadrupole':
-            S  = quadrupole(self.k0, self.xc, self.yc, self.xs+dx, self.ys-dy, s)
-            Sf = quadrupole(self.k0, self.xt, self.yt, self.xs+dx, self.ys-dy, s)
+            S  = quadrupole(self.k0, self.xc, self.yc, self.xs+dx, self.ys-dy, s)[1]
+            Sf = quadrupole(self.k0, self.xt, self.yt, self.xs+dx, self.ys-dy, s)[1]
         else:
             raise ValueError("Invalid source type. Choose 'monopole' or 'quadrupole'.")
 
@@ -304,31 +300,53 @@ class Profil:
         
 
         pscat  = np.dot((np.dot(self.Gt , self.D) - self.Ht ) , pl)  # Scattered pressure
-        pinc = -Sf   # Pressure from incident source
+        pinc =  -Sf   # Pressure from incident source
         ptarget =  pscat + pinc
-        return ptarget
+        return ptarget,pscat,pinc
 
     def sources_from_target(self,t,sourceType='monopole'):
         """ This function computes the model source quadrupole from a list of sources,
         whith coordinates at (xc, yc) and (complex) intensity s, to a list of targets at (xt, yt)"""
         # Compute the right-hand side
         eps= self.eps
-        T = monopole(self.k0, self.xc, self.yc, self.xt, self.yt, t)
+        T =  monopole  (self.k0, self.xc, self.yc, self.xt, self.yt, t)
 
         # Solve the linear system and get the source values(pressure fluctuation) for each panel
         pl = np.linalg.solve(self.A,T)
+        dpdn = np.dot(self.D, pl)
         
-        p = np.empty((3,3), dtype=object)
+        
+        p     = np.empty((3,3), dtype=object)
+        pscat = np.zeros((3,3), dtype=object)
+        Tfin = np.zeros((3,3), dtype=object)
         for idx,dx in enumerate([-eps, 0 , eps]):
             for idy,dy in enumerate([-eps, 0 , eps]):
-                Tfin    = monopole(self.k0, self.xt, self.yt, self.xs+dx, self.ys+dy, t)
-                pscat = np.dot((np.dot(self.Gs[idx,idy] , self.D) - self.Hs[idx,idy]) , pl)  # Scattered pressure
-                pinc = -Tfin   # Pressure from incident source
-                p[idx,idy] = pscat + pinc
+                Tfin[idx,idy]    = monopole(self.k0, self.xt, self.yt, self.xs+dx, self.ys+dy, t)
+                pscat[idx,idy] = np.dot((np.dot(self.Gs[idx,idy] , self.D) - self.Hs[idx,idy]) , pl)  # Scattered pressure
+                pinc = -Tfin[idx,idy]   # Pressure from incident source
+                p[idx,idy] = pscat[idx,idy] + pinc
         
-        # return np.sum(psource*2-psourcexp-psourcexm)/eps**2
         if sourceType == 'monopole':
-            return p[1,1]
+            G = monopole(self.k0, self.xc, self.yc, self.xs, self.ys, dpdn) 
+            H = dipole  (self.k0, self.xc, self.yc, self.xs, self.ys, pl)
+            H = H[0]*self.n1 + H[1]*self.n2 
+            pscat = np.sum(( G - H)* self.ds,axis=0)
+            Tin    = monopole(self.k0, self.xt, self.yt, self.xs, self.ys, t)
+            p2 = pscat - Tin 
+            return p2, p[1,1] 
+        if sourceType == 'dipole':
+            G = dipole(self.k0, self.xc, self.yc, self.xs, self.ys, dpdn)[1] 
+            H = quadrupole(self.k0, self.xc, self.yc, self.xs, self.ys, pl)
+            H1 = H[1]*self.n1
+            H2 = H[2]*self.n2 
+            
+            G  = np.sum(G*self.ds,axis=0)
+            H1 = np.sum(H1*self.ds,axis=0)
+            H2 = np.sum(H2*self.ds,axis=0)
+            pscat = G-H1-H2
+            Tin    = dipole(self.k0, self.xt, self.yt, self.xs, self.ys, t)[1]
+            p2 = pscat - Tin 
+            return p2, pscat,Tin,G,H1,H2
         elif sourceType == 'quadrupole':
             return p
             # return (p[2,2]-p[2,0]+p[0,0]-p[0,2])/(2*eps)**2
@@ -352,13 +370,15 @@ def main(args):
     
     # Constants variables
     # R = 1.0e-3          # Radius of porous
-    # kr = 4.0/np.pi  # Rayleigh conductivity
-    # gamma = 0.5772156649    # Constant of Euler
+    kr = 4.0/np.pi  # Rayleigh conductivity
+    gamma = 0.5772156649    # Constant of Euler
     # print("alphaH/R = " + str(alphaH/R)) 
 
     xs,ys = sources()
     xt,yt, theta_o = targets()    
-    # profil = Profil( k0, alphaH, epsilon, omega, xs,ys,xt,yt,Npsx=700, thickness=0.0001, c=1.0,eps=1e-2)
+    xs,ys = np.array([1]),np.array([.01])
+    # xt,yt = np.array([-10.]),np.array([-10.])
+    profil = Profil( k0, alphaH, epsilon, omega, xs,ys,xt,yt,Npsx=500, thickness=0.002, c=1.0,eps=1e-2)
 
     s = [1] 
     print("Monopole source: " )
@@ -366,8 +386,16 @@ def main(args):
     ps   = profil.sources_from_target([1],sourceType='monopole')
     print("Direct  Greens func: " + str(pobs))
     print("Adjoint Greens func: " + str(ps))
-    print("Error: " + str(ps-pobs))
+    # print("Error: " + str(ps-pobs))
     
+    print("Dipole source: " )
+    pobs = profil.target_from_sources(s,sourceType='dipole')
+    ps   = profil.sources_from_target([1],sourceType='dipole')
+    print("Direct  Greens func: " + str(pobs))
+    print("Adjoint Greens func: " + str(ps))
+    # print("Error: " + str(ps-pobs))
+    exit()
+
     print("Quadrupole source from monopoles: " )
     pobs = np.zeros((3,3),dtype=complex)
     for i,dx in enumerate([-profil.eps, 0 , profil.eps]):
@@ -389,7 +417,7 @@ def main(args):
     outputs = "results"
     if not os.path.isdir(outputs):
         os.makedirs(outputs)
-    save = os.path.join(outputs, "k%0.1f_alphaH_R%d_Omega_%0.3f_res.dat" %(k0,int(alphaH/R),omega))
+    save = os.path.join(outputs, "k%0.1f_Omega_%0.3f_res.dat" %(k0,omega))
     f=open(save, "wt")
 
     for i in range(len(theta_o)):
